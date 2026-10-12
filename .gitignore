@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Caches & generated artifacts
+.pytest_cache/
+.ruff_cache/
+benchmark.json
+*.log
+
+# Data & model weights (never commit)
+data_cache/
+*.npz
+*.npy
+models/
+*.pt
+*.ckpt
+
+# Secrets
+*.key
+*.pem
+.env
+secrets/

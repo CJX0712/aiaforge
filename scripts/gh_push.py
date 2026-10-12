@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import contextlib
 import json
 import os
 import subprocess
@@ -73,7 +74,7 @@ def api_call(method: str, url: str, token: str, data: dict | None = None) -> dic
         with urllib.request.urlopen(req, timeout=60) as resp:
             raw = resp.read().decode()
             return json.loads(raw) if raw else {}
-    except urllib.error.HTTPError as exc:  # noqa: BLE001
+    except urllib.error.HTTPError as exc:
         detail = exc.read().decode() if exc.fp else ""
         raise RuntimeError(f"GitHub API {method} {url} -> {exc.code}: {detail}") from exc
 
@@ -163,7 +164,9 @@ def push_via_gitdata(local: Path, owner: str, name: str, token: str) -> None:
         )
         blobs[rel] = res["sha"]
 
-    tree = [{"path": rel, "mode": "100644", "type": "blob", "sha": sha} for rel, sha in blobs.items()]
+    tree = [
+        {"path": rel, "mode": "100644", "type": "blob", "sha": sha} for rel, sha in blobs.items()
+    ]
     tree_res = api_call("POST", f"{base}/git/trees", token, {"tree": tree})
     tree_sha = tree_res["sha"]
 
@@ -234,11 +237,9 @@ def push_via_git(local: Path, owner: str, name: str, token: str) -> bool:
 
 
 def create_release(owner: str, name: str, tag: str, notes: str, token: str) -> None:
-    # Local tag + push.
-    try:
+    # Local tag (best-effort; ignore if git is unavailable).
+    with contextlib.suppress(Exception):
         run(["git", "tag", "-f", tag], cwd=None)
-    except Exception:  # noqa: BLE001
-        pass
     # Use gh for the release (handles existing-tag/idempotency).
     try:
         run(
@@ -258,7 +259,7 @@ def create_release(owner: str, name: str, tag: str, notes: str, token: str) -> N
             check=False,
         )
         print(f"[gh_push] release {tag} created")
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         print(f"[gh_push] release creation skipped: {exc}")
 
 
@@ -266,7 +267,10 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--repo", required=True)
     ap.add_argument("--local", required=True)
-    ap.add_argument("--description", default="AiaForge: attribute inference attack benchmark (晨星)")
+    ap.add_argument(
+        "--description",
+        default="AiaForge: attribute inference attack benchmark (晨星)",
+    )
     ap.add_argument("--tag", default="v0.1.0")
     ap.add_argument("--release", default="")
     args = ap.parse_args()
